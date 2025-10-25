@@ -4,8 +4,20 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:excel/excel.dart';
+import 'package:path/path.dart' as path;
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'config/supabase_config.dart';
+import 'services/supabase_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Inicializar Supabase
+  await Supabase.initialize(
+    url: SupabaseConfig.supabaseUrl,
+    anonKey: SupabaseConfig.supabaseAnonKey,
+  );
+  
   runApp(const MyApp());
 }
 
@@ -26,15 +38,61 @@ class MyApp extends StatelessWidget {
 }
 
 class BarcodeItem {
+  final String? id; // ID de Supabase (puede ser null si aún no se ha guardado)
   final String code;
   final DateTime timestamp;
   final String type;
+  bool isSyncing; // Indica si se está guardando en Supabase
+  bool isSynced; // Indica si ya se guardó en Supabase
 
   BarcodeItem({
+    this.id,
     required this.code,
     required this.timestamp,
     required this.type,
+    this.isSyncing = false,
+    this.isSynced = false,
   });
+
+  /// Crear desde JSON (para datos de Supabase)
+  factory BarcodeItem.fromJson(Map<String, dynamic> json) {
+    return BarcodeItem(
+      id: json['id'] as String?,
+      code: json['code'] as String,
+      type: json['type'] as String,
+      timestamp: DateTime.parse(json['timestamp'] as String),
+      isSynced: true,
+    );
+  }
+
+  /// Convertir a JSON (para enviar a Supabase)
+  Map<String, dynamic> toJson() {
+    return {
+      if (id != null) 'id': id,
+      'code': code,
+      'type': type,
+      'timestamp': timestamp.toIso8601String(),
+    };
+  }
+
+  /// Crear una copia con campos actualizados
+  BarcodeItem copyWith({
+    String? id,
+    String? code,
+    DateTime? timestamp,
+    String? type,
+    bool? isSyncing,
+    bool? isSynced,
+  }) {
+    return BarcodeItem(
+      id: id ?? this.id,
+      code: code ?? this.code,
+      timestamp: timestamp ?? this.timestamp,
+      type: type ?? this.type,
+      isSyncing: isSyncing ?? this.isSyncing,
+      isSynced: isSynced ?? this.isSynced,
+    );
+  }
 }
 
 class BarcodeScannerPage extends StatefulWidget {
@@ -58,16 +116,76 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
 
         // Evitar duplicados consecutivos
         if (_scannedBarcodes.isEmpty || _scannedBarcodes.last.code != code) {
+          final newItem = BarcodeItem(
+            code: code,
+            timestamp: DateTime.now(),
+            type: barcode.format.name,
+            isSyncing: true, // Marcamos que se está sincronizando
+          );
+
           setState(() {
-            _scannedBarcodes.add(
-              BarcodeItem(
-                code: code,
-                timestamp: DateTime.now(),
-                type: barcode.format.name,
-              ),
-            );
+            _scannedBarcodes.add(newItem);
           });
+
+          // Guardar en Supabase en segundo plano
+          _saveToSupabase(newItem);
         }
+      }
+    }
+  }
+
+  /// Guardar un código en Supabase
+  Future<void> _saveToSupabase(BarcodeItem item) async {
+    try {
+      final id = await SupabaseService.saveBarcode(
+        code: item.code,
+        type: item.type,
+        timestamp: item.timestamp,
+      );
+
+      // Actualizar el item con el ID de Supabase
+      if (mounted) {
+        setState(() {
+          final index = _scannedBarcodes.indexOf(item);
+          if (index != -1) {
+            _scannedBarcodes[index] = item.copyWith(
+              id: id,
+              isSyncing: false,
+              isSynced: id != null,
+            );
+          }
+        });
+
+        // Mostrar mensaje de éxito o error
+        if (id != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('✓ Código guardado en Supabase'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 1),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('⚠ Error al guardar en Supabase'),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          final index = _scannedBarcodes.indexOf(item);
+          if (index != -1) {
+            _scannedBarcodes[index] = item.copyWith(
+              isSyncing: false,
+              isSynced: false,
+            );
+          }
+        });
       }
     }
   }
@@ -82,6 +200,38 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
     setState(() {
       _scannedBarcodes.clear();
     });
+  }
+
+  /// Widget que muestra el estado de sincronización
+  Widget _buildSyncStatusIcon(BarcodeItem item) {
+    if (item.isSyncing) {
+      return const SizedBox(
+        width: 16,
+        height: 16,
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+        ),
+      );
+    } else if (item.isSynced) {
+      return const Tooltip(
+        message: 'Guardado en Supabase',
+        child: Icon(
+          Icons.cloud_done,
+          color: Colors.green,
+          size: 20,
+        ),
+      );
+    } else {
+      return const Tooltip(
+        message: 'Error al guardar',
+        child: Icon(
+          Icons.cloud_off,
+          color: Colors.orange,
+          size: 20,
+        ),
+      );
+    }
   }
 
   String _convertToCSV(List<List<dynamic>> rows) {
@@ -134,10 +284,7 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
   }
 
   Future<void> _exportAsCSV() async {
-    print('🔍 Iniciando exportación CSV...');
-    
     if (_scannedBarcodes.isEmpty) {
-      print('⚠️ No hay códigos para exportar');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -148,8 +295,6 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
       }
       return;
     }
-
-    print('✅ Códigos a exportar: ${_scannedBarcodes.length}');
 
     try {
       // Preparar los datos para el CSV
@@ -168,33 +313,27 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
         ]);
       }
 
-      print('📊 Datos preparados, convirtiendo a CSV...');
-
       // Convertir a CSV manualmente
       String csv = _convertToCSV(rows);
-      print('✅ CSV generado: ${csv.length} caracteres');
 
       // Obtener el directorio temporal
       final directory = await getTemporaryDirectory();
-      final path =
-          '${directory.path}/codigos_barras_${DateTime.now().millisecondsSinceEpoch}.csv';
-
-      print('📁 Guardando en: $path');
-
-      // Crear el archivo
-      final file = File(path);
-      await file.writeAsString(csv);
-
-      print('✅ Archivo guardado, compartiendo...');
-
-      // Compartir el archivo
-      await Share.shareXFiles(
-        [XFile(path)],
-        subject: 'Códigos de barras escaneados',
-        text: 'Lista de ${_scannedBarcodes.length} códigos escaneados',
+      final filePath = path.join(
+        directory.path,
+        'codigos_barras_${DateTime.now().millisecondsSinceEpoch}.csv',
       );
 
-      print('✅ Compartido exitosamente');
+      // Crear el archivo
+      final file = File(filePath);
+      await file.writeAsString(csv);
+
+      // Compartir el archivo
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(filePath)],
+          subject: 'Códigos de barras escaneados',
+        ),
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -204,10 +343,7 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
           ),
         );
       }
-    } catch (e, stackTrace) {
-      print('❌ ERROR al exportar: $e');
-      print('Stack trace: $stackTrace');
-      
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -221,10 +357,7 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
   }
 
   Future<void> _exportAsXLSX() async {
-    print('🔍 Iniciando exportación XLSX...');
-    
     if (_scannedBarcodes.isEmpty) {
-      print('⚠️ No hay códigos para exportar');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -235,8 +368,6 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
       }
       return;
     }
-
-    print('✅ Códigos a exportar: ${_scannedBarcodes.length}');
 
     try {
       // Crear un nuevo archivo Excel
@@ -264,30 +395,26 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
         ]);
       }
 
-      print('📊 Excel generado con ${_scannedBarcodes.length} filas');
-
       // Obtener el directorio temporal
       final directory = await getTemporaryDirectory();
-      final path =
-          '${directory.path}/codigos_barras_${DateTime.now().millisecondsSinceEpoch}.xlsx';
-
-      print('📁 Guardando en: $path');
+      final filePath = path.join(
+        directory.path,
+        'codigos_barras_${DateTime.now().millisecondsSinceEpoch}.xlsx',
+      );
 
       // Guardar el archivo
-      final file = File(path);
+      final file = File(filePath);
       final bytes = excel.encode();
       if (bytes != null) {
         await file.writeAsBytes(bytes);
-        print('✅ Archivo guardado, compartiendo...');
 
         // Compartir el archivo
-        await Share.shareXFiles(
-          [XFile(path)],
-          subject: 'Códigos de barras escaneados',
-          text: 'Lista de ${_scannedBarcodes.length} códigos escaneados en formato Excel',
+        await SharePlus.instance.share(
+          ShareParams(
+            files: [XFile(filePath)],
+            subject: 'Códigos de barras escaneados',
+          ),
         );
-
-        print('✅ Compartido exitosamente');
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -298,10 +425,7 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
           );
         }
       }
-    } catch (e, stackTrace) {
-      print('❌ ERROR al exportar XLSX: $e');
-      print('Stack trace: $stackTrace');
-      
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -345,7 +469,7 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
         children: [
           // Área del escáner
           if (_isScanning)
-            Container(
+            SizedBox(
               height: 300,
               child: MobileScanner(
                 controller: cameraController,
@@ -405,6 +529,7 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
                           DataColumn(label: Text('Código')),
                           DataColumn(label: Text('Tipo')),
                           DataColumn(label: Text('Hora')),
+                          DataColumn(label: Text('Estado')),
                         ],
                         rows: _scannedBarcodes.asMap().entries.map((entry) {
                           final index = entry.key;
@@ -425,6 +550,9 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
                                 Text(
                                   '${item.timestamp.hour}:${item.timestamp.minute.toString().padLeft(2, '0')}:${item.timestamp.second.toString().padLeft(2, '0')}',
                                 ),
+                              ),
+                              DataCell(
+                                _buildSyncStatusIcon(item),
                               ),
                             ],
                           );
