@@ -1,15 +1,16 @@
 import { defineConfig } from "drizzle-kit";
+import { envConfig } from "./config/env.config";
 
 export default defineConfig({
   dialect: "postgresql",
   schema: "./db/schema.ts",
   out: "./drizzle",
   dbCredentials: {
-    host: "localhost",
-    port: 5432,
-    database: "mydb",
-    user: "postgres",
-    password: "test123",
+    host: envConfig.database.host,
+    port: envConfig.database.port,
+    database: envConfig.database.name,
+    user: envConfig.database.user,
+    password: envConfig.database.password,
     ssl: false,
   },
 });

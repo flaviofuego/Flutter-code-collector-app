@@ -1,10 +1,10 @@
 import 'dart:convert';
 
 import 'package:frontend/core/constants/constants.dart';
+import 'package:frontend/core/http/http_client.dart';
 import 'package:frontend/core/services/sp_service.dart';
 import 'package:frontend/features/auth/repository/auth_local_repository.dart';
 import 'package:frontend/models/user_model.dart';
-import 'package:http/http.dart' as http;
 
 class AuthRemoteRepository {
   final spService = SpService();
@@ -16,7 +16,7 @@ class AuthRemoteRepository {
     required String password,
   }) async {
     try {
-      final res = await http.post(
+      final res = await HttpClient.post(
         Uri.parse(
           '${Constants.backendUri}/auth/signup',
         ),
@@ -46,7 +46,7 @@ class AuthRemoteRepository {
     required String password,
   }) async {
     try {
-      final res = await http.post(
+      final res = await HttpClient.post(
         Uri.parse(
           '${Constants.backendUri}/auth/login',
         ),
@@ -77,7 +77,7 @@ class AuthRemoteRepository {
         return null;
       }
 
-      final res = await http.post(
+      final res = await HttpClient.post(
         Uri.parse(
           '${Constants.backendUri}/auth/tokenIsValid',
         ),
@@ -92,7 +92,7 @@ class AuthRemoteRepository {
         return null;
       }
 
-      final userResponse = await http.get(
+      final userResponse = await HttpClient.get(
         Uri.parse(
           '${Constants.backendUri}/auth',
         ),

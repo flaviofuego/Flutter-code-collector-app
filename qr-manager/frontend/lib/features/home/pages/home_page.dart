@@ -8,6 +8,7 @@ import 'package:frontend/features/home/cubit/tasks_cubit.dart';
 import 'package:frontend/features/home/pages/add_new_task_page.dart';
 import 'package:frontend/features/home/widgets/date_selector.dart';
 import 'package:frontend/features/home/widgets/task_card.dart';
+import 'package:frontend/core/widgets/app_drawer.dart';
 import 'package:intl/intl.dart';
 
 class HomePage extends StatefulWidget {
@@ -39,8 +40,9 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: const AppDrawer(),
       appBar: AppBar(
-        title: const Text("My Tasks"),
+        title: const Text("Mis Tareas"),
         actions: [
           IconButton(
             onPressed: () {

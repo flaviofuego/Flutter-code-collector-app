@@ -5,8 +5,15 @@ services:
     ports: 
       - "8000:8000"
     environment:
+      - NODE_ENV=development
       - PORT=8000
-      - DATABASE_URL=postgresql://postgres:test123@db:5432/mydb
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=mydb
+      - DB_USER=postgres
+      - DB_PASSWORD=test123
+      - JWT_SECRET=passwordKey
+      - ALLOWED_ORIGINS=http://localhost:*,http://127.0.0.1:*,https://*.ngrok-free.dev
     depends_on:
       - db
     volumes:

@@ -2,9 +2,9 @@ import 'dart:convert';
 
 import 'package:frontend/core/constants/constants.dart';
 import 'package:frontend/core/constants/utils.dart';
+import 'package:frontend/core/http/http_client.dart';
 import 'package:frontend/features/home/repository/task_local_repository.dart';
 import 'package:frontend/models/task_model.dart';
-import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 
 class TaskRemoteRepository {
@@ -19,7 +19,7 @@ class TaskRemoteRepository {
     required DateTime dueAt,
   }) async {
     try {
-      final res = await http.post(Uri.parse("${Constants.backendUri}/tasks"),
+      final res = await HttpClient.post(Uri.parse("${Constants.backendUri}/tasks"),
           headers: {
             'Content-Type': 'application/json',
             'x-auth-token': token,
@@ -62,7 +62,7 @@ class TaskRemoteRepository {
 
   Future<List<TaskModel>> getTasks({required String token}) async {
     try {
-      final res = await http.get(
+      final res = await HttpClient.get(
         Uri.parse("${Constants.backendUri}/tasks"),
         headers: {
           'Content-Type': 'application/json',
@@ -103,7 +103,7 @@ class TaskRemoteRepository {
       for (final task in tasks) {
         taskListInMap.add(task.toMap());
       }
-      final res = await http.post(
+      final res = await HttpClient.post(
         Uri.parse("${Constants.backendUri}/tasks/sync"),
         headers: {
           'Content-Type': 'application/json',

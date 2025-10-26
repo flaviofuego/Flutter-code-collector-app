@@ -1,10 +1,44 @@
 import express from "express";
+import cors from "cors";
 import swaggerUi from "swagger-ui-express";
 import swaggerSpec from "./swagger.config";
 import authRouter from "./routes/auth";
 import taskRouter from "./routes/task";
+import { envConfig } from "./config/env.config";
 
 const app = express();
+
+// CORS configuration - función para permitir múltiples orígenes
+const corsOptions = {
+  origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
+    // Permitir requests sin origin (como Postman, apps móviles, o mismo origen)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = envConfig.cors.allowedOrigins;
+    
+    // Verificar si el origin está en la lista permitida
+    const isAllowed = allowedOrigins.some((allowedOrigin: string) => {
+      // Si es un wildcard (*), permitir cualquier origin de ese dominio
+      if (allowedOrigin.includes('*')) {
+        const pattern = allowedOrigin.replace(/\*/g, '.*');
+        const regex = new RegExp(`^${pattern}$`);
+        return regex.test(origin);
+      }
+      // Comparación exacta
+      return allowedOrigin === origin;
+    });
+    
+    // Siempre devolver null como error, y true/false para indicar si está permitido
+    callback(null, isAllowed);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token', 'ngrok-skip-browser-warning'],
+  exposedHeaders: ['x-auth-token'],
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
 
 app.use(express.json());
 

@@ -1,3 +1,33 @@
 {
-    "java.configuration.updateBuildConfiguration": "interactive"
+    "java.configuration.updateBuildConfiguration": "interactive",
+    
+    // Optimización de Java (solo activar cuando trabajes con Android nativo)
+    "java.jdt.ls.java.home": "",
+    "java.import.gradle.enabled": false,
+    "java.autobuild.enabled": false,
+    "java.maxConcurrentBuilds": 1,
+
+    // Extensiones deshabilitadas SOLO en este workspace
+    "extensions.ignoreRecommendations": true,
+    "extensions.autoUpdate": false,
+    
+    "files.watcherExclude": {
+        "**/node_modules/**": true,
+        "**/.git/objects/**": true,
+        "**/build/**": true,
+        "**/.dart_tool/**": true,
+        "**/android/.gradle/**": true,
+        "**/ios/Pods/**": true
+    },
+    "search.exclude": {
+        "**/node_modules": true,
+        "**/.dart_tool": true,
+        "**/build": true
+    },
+    "git.autorefresh": false,
+    "git.autofetch": false,
+    "telemetry.telemetryLevel": "off",
+    "editor.minimap.enabled": false,
+    "workbench.editor.limit.enabled": true,
+    "workbench.editor.limit.value": 10
 }

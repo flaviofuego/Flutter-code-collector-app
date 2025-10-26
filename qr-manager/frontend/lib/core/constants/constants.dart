@@ -1,3 +1,5 @@
+import '../config/env_config.dart';
+
 class Constants {
-  static String backendUri = "https://tonita-lexicostatistical-cadgily.ngrok-free.dev";
+  static String backendUri = EnvConfig.backendUrl;
 }

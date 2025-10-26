@@ -4,8 +4,20 @@ import 'package:frontend/features/auth/cubit/auth_cubit.dart';
 import 'package:frontend/features/auth/pages/signup_page.dart';
 import 'package:frontend/features/home/cubit/tasks_cubit.dart';
 import 'package:frontend/features/home/pages/home_page.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
+import 'core/config/env_config.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Inicializar Supabase si está configurado
+  if (EnvConfig.isSupabaseConfigured) {
+    await Supabase.initialize(
+      url: EnvConfig.supabaseUrl,
+      anonKey: EnvConfig.supabaseAnonKey,
+    );
+  }
+
   runApp(
     MultiBlocProvider(
       providers: [
@@ -34,7 +46,8 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Task App',
+      title: 'Task Manager',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         fontFamily: "Cera Pro",
         inputDecorationTheme: InputDecorationTheme(

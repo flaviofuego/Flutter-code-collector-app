@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import { db } from "../db";
 import { users } from "../db/schema";
 import { eq } from "drizzle-orm";
+import { envConfig } from "../config/env.config";
 
 export interface AuthRequest extends Request {
   user?: UUID;
@@ -25,7 +26,7 @@ export const auth = async (
     }
 
     // verify if the token is valid
-    const verified = jwt.verify(token, "passwordKey");
+    const verified = jwt.verify(token, envConfig.jwt.secret);
 
     if (!verified) {
       res.status(401).json({ error: "Token verification failed!" });

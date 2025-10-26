@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test CORS</title>
+</head>
+<body>
+    <h1>Test de Login CORS</h1>
+    <button onclick="testLogin()">Probar Login</button>
+    <pre id="result"></pre>
+
+    <script>
+        async function testLogin() {
+            const resultEl = document.getElementById('result');
+            resultEl.textContent = 'Enviando petición...';
+            
+            try {
+                const response = await fetch('http://localhost:8000/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'jorge@example.com',
+                        password: 'password123'
+                    })
+                });
+
+                const data = await response.json();
+                resultEl.textContent = `Status: ${response.status}\n\nResponse:\n${JSON.stringify(data, null, 2)}`;
+            } catch (error) {
+                resultEl.textContent = `Error: ${error.message}\n\n${error.stack}`;
+            }
+        }
+    </script>
+</body>
+</html>

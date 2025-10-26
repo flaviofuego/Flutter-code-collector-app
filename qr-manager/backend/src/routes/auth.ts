@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import bcryptjs from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { auth, AuthRequest } from "../middleware/auth";
+import { envConfig } from "../config/env.config";
 const authRouter = Router();
 
 interface SignUpBody {
@@ -146,7 +147,7 @@ authRouter.post(
         return;
       }
 
-      const token = jwt.sign({ id: existingUser.id }, "passwordKey");
+      const token = jwt.sign({ id: existingUser.id }, envConfig.jwt.secret);
 
       res.json({ token, ...existingUser });
     } catch (e) {
@@ -186,7 +187,7 @@ authRouter.post("/tokenIsValid", async (req, res) => {
     }
 
     // verify if the token is valid
-    const verified = jwt.verify(token, "passwordKey");
+    const verified = jwt.verify(token, envConfig.jwt.secret);
 
     if (!verified) {
       res.json(false);
